@@ -1,0 +1,98 @@
+#!/bin/bash
+
+#DO NOT MODIFY THIS FILE BY HAND (IT IS MANAGED BY ANSIBLE)
+
+#Command Replacements
+alias mkdir="mkdir -pv"
+alias wget="wget -c"
+alias top="htop"
+alias rm="rm -i"
+alias df="pydf"
+
+#Shorthand Commands
+alias ll="ls -ahl"
+alias h="cd ~"
+alias f="nautilus . &"
+alias e="subl . &"
+alias x="exit"
+
+#Docker Specific Shortcuts
+alias {{alias_prefix}}docker_get_container_ip="docker inspect --format '{{'{{''}} .NetworkSettings.IPAddress {{'}}'}}'"
+{{alias_prefix}}docker_stop_all_containers () {
+  docker stop $(docker ps -a -q)
+}
+{{alias_prefix}}docker_delete_all_orphaned_images () {
+  docker rmi -f $(docker images -q -a -f dangling=true)
+}
+{{alias_prefix}}docker_delete_all_stopped_containers () {
+  docker rm -f $(docker ps -aq -f status=exited)
+}
+
+#Utilities
+alias {{alias_prefix}}reload_aliases="source ~/.aliases"
+alias {{alias_prefix}}list_groups="cut -d: -f1 /etc/group | sort"
+alias {{alias_prefix}}list_listening_ports="netstat --listen"
+alias {{alias_prefix}}free="free -mt"
+alias {{alias_prefix}}ps="ps auxf"
+alias {{alias_prefix}}search_ps="ps aux | grep -v grep | grep -i -e VSZ -e"
+alias {{alias_prefix}}search_history="history | grep -i -e VSZ -e"
+alias {{alias_prefix}}show_public_ip="curl http://ipecho.net/plain; echo"
+alias {{alias_prefix}}show_ip="ip -br addr show | grep -v 127.0.0.1 | grep -vi down"
+alias {{alias_prefix}}show_memory="dmesg | grep Memory"
+
+{{alias_prefix}}mkdir () {
+    mkdir -p $1
+    cd $1
+}
+
+{{alias_prefix}}install_deb () {
+  sudo dpkg -i $1
+  sudo apt-get install -f
+}
+
+{{alias_prefix}}print_column () {
+  awk "{print \$$1}"
+}
+
+{{alias_prefix}}show_distro_info () {
+  ip a
+  hostname -f
+  cat /etc/lsb-release
+  uname -a
+}
+
+#Command to easily extract any archive
+{{alias_prefix}}extract () {
+ if [ -z "$1" ]; then
+    echo "Usage: extract <path/file_name>.<zip|rar|bz2|gz|tar|tbz2|tgz|Z|7z|xz|ex|tar.bz2|tar.gz|tar.xz>"
+    echo "       extract <path/file_name_1.ext> [path/file_name_2.ext] [path/file_name_3.ext]"
+    return 1
+ else
+    for n in $@
+    do
+      if [ -f "$n" ] ; then
+          case "${n%,}" in
+            *.tar.bz2|*.tar.gz|*.tar.xz|*.tbz2|*.tgz|*.txz|*.tar) 
+                         tar xvf "$n"       ;;
+            *.lzma)      unlzma ./"$n"      ;;
+            *.bz2)       bunzip2 ./"$n"     ;;
+            *.rar)       unrar x -ad ./"$n" ;;
+            *.gz)        gunzip ./"$n"      ;;
+            *.zip)       unzip ./"$n"       ;;
+            *.z)         uncompress ./"$n"  ;;
+            *.7z|*.arj|*.cab|*.chm|*.deb|*.dmg|*.iso|*.lzh|*.msi|*.rpm|*.udf|*.wim|*.xar)
+                         7z x ./"$n"        ;;
+            *.xz)        unxz ./"$n"        ;;
+            *.exe)       cabextract ./"$n"  ;;
+            *)
+                         echo "extract: '$n' - unknown archive method"
+                         return 1
+                         ;;
+          esac
+      else
+          echo "'$n' - file does not exist"
+          return 1
+      fi
+    done
+fi
+}

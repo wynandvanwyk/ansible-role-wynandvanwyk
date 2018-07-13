@@ -1,0 +1,61 @@
+- name: Bleh
+  pause: prompt="Do you want to install deb packages (yes/no)?"
+  register: install_debs
+  delegate_to: localhost
+
+- name: Adding APT key - {{item}}
+  become: true
+  apt_key: "state=present  url={{item}}"
+  with_items:  "{{apt_keys}}"
+
+- name: Adding APT repository -  {{item}}
+  become: true
+  apt_repository: repo={{item}}  state=present
+  with_items:  "{{apt_repos}}"
+
+- name: Update APT package index
+  become: true
+  apt:
+    update_cache: yes
+  changed_when: false
+
+- name: Installing APT Package - {{item}}
+  become: true
+  package: name={{item.name}}  state={{item.state}} 
+  when:  variable is defined
+  with_items: "{{apt_packages}}"
+
+- name: Installing deb - {{item}}
+  become: true
+  apt: "deb={{item}} install_recommends=yes state=installed"  
+  with_items: "{{debs}}"
+  when: hostvars['localhost'].install_debs.user_input | bool
+
+- name: Installing npm module - {{item}}
+  become: true
+  npm: "global=yes name={{item}} state=present"
+  with_items: "{{npm_modules}}"
+
+- name: Deploy .aliases file
+  template: "src=aliases.j2 dest={{lookup('env','HOME')}}/.aliases"
+
+- name: Ensure that alias file is source in all shell rc files
+  lineinfile: "create=yes  dest={{lookup('env','HOME')}}/{{item}} line=source {{lookup('env','HOME')}}/.aliases state=present " 
+  with_items: "{{shell_rc_files}}"
+
+- set_fact: "the_user={{ansible_user_id}}"
+
+- name: Adding user {{the_user}} to docker group
+  become: true
+  user: "name={{the_user}} groups=docker append=yes"
+  
+- name: Check if gnome workspaces are configured properly
+  become: true
+  command: "gsettings get org.gnome.mutter workspaces-only-on-primary"
+  register: output
+  changed_when: false
+
+- name: Configure gnome workspaces to work with multiple monitors
+  become: true
+  command: "gsettings set org.gnome.mutter workspaces-only-on-primary false"
+  when: output.stdout == "true"
